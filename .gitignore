@@ -1,0 +1,15 @@
+# Datos originales pesados (los procesados SÍ se versionan)
+modulo*/data/raw/*
+!modulo*/data/raw/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+venv/
+.env
+
+# Sistema
+*:Zone.Identifier
+.DS_Store
