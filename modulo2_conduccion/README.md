@@ -8,6 +8,46 @@ Ver el enunciado completo en `docs/instrucciones_trabajo_3.pdf` (páginas 4–5)
 > Las imágenes originales van en `data/raw/` y **no** se suben a git (son pesadas).
 > En `data/processed/` dejen solo los archivos de partición y una muestra pequeña.
 
+## Puntos 1 a 4 del enunciado
+
+El [análisis de los cuatro puntos](notebooks/analisis_puntos_1_a_4.md) reúne el caso de
+uso, el perfil del conjunto, la auditoría de la partición y los resultados de la
+regresión logística. Los experimentos posteriores deben reutilizar
+[`data/processed/particiones.csv`](data/processed/particiones.csv).
+
+Ejecuta estos comandos desde la raíz del repositorio con Python 3.12 y un entorno
+virtual activo. Para instalar las versiones de CPU de PyTorch y las demás dependencias:
+
+```bash
+python -m pip install torch==2.8.0 torchvision==0.23.0 --index-url https://download.pytorch.org/whl/cpu
+python -m pip install -r modulo2_conduccion/requirements.txt
+```
+
+Para la demo sin descargar datos ni pesos, usa la muestra de características
+congeladas incluida en el repositorio. El directorio de salida mantiene separados
+los resultados de demostración y los definitivos.
+
+```bash
+python -m modulo2_conduccion.src.train --config modulo2_conduccion/configs/demo.yaml --output /tmp/t03-demo
+```
+
+Para reproducir el experimento completo, descarga el [ZIP de Mendeley Data, versión
+1](https://doi.org/10.17632/mzb4b6dff3.1) y guárdalo como
+`modulo2_conduccion/data/raw/dataset.zip`. Se lee directamente del ZIP. Su SHA-256
+es `427fec9d689a22856c51c7773adc6024158d5b228e36b2c9b58a13ce9af41c8c`.
+Torchvision descarga automáticamente los pesos ImageNet de MobileNetV3-Small si
+aún no están en su caché local.
+
+```bash
+python -m modulo2_conduccion.src.prepare
+python -m modulo2_conduccion.src.train --config modulo2_conduccion/configs/baseline.yaml
+```
+
+`prepare` regenera el manifiesto, inventario y figuras descriptivas. `train` guarda
+el clasificador, su especificación de características, las métricas y la matriz de
+confusión. Se pueden cambiar los parámetros de agrupamiento con `prepare --help` y
+los parámetros de ajuste con el YAML.
+
 ## Lo que este módulo debe entregar para la aplicación web
 
 La app debe permitir: **subir una imagen → ver la clase asignada, la probabilidad de cada
@@ -18,7 +58,7 @@ Para eso necesitamos:
 - [ ] Mejor modelo final (CNN propia o transfer learning) guardado (`.keras` / `.pt`).
       Preferir una arquitectura liviana (MobileNet, EfficientNet-B0, ResNet-18…), porque la
       app se publicará en un servidor gratuito con poca memoria (idealmente < 100 MB).
-- [ ] Modelo de referencia (regresión logística sobre características congeladas), `joblib`.
+- [x] Modelo de referencia (regresión logística sobre características congeladas), `joblib`.
 - [ ] `models/metadata.json` con:
   ```json
   {
@@ -54,10 +94,10 @@ para que la app solo pase la imagen tal como la sube el usuario.
 
 ### 5. Resultados para el reporte (`results/`, `figures/`)
 - [ ] Exactitud, F1 macro, precisión y sensibilidad por clase, matriz de confusión.
-- [ ] Evidencia de partición sin fuga (método de detección de duplicados/casi duplicados).
+- [x] Evidencia de la auditoría de duplicados y casi duplicados de la partición.
 - [ ] Resultados de las 30 semillas (media, desv. estándar, mejor, peor).
 - [ ] 10 aciertos y 10 errores con su explicación; mapas Grad-CAM.
 - [ ] Figuras mínimas del módulo + figuras comunes (arquitectura, curvas de aprendizaje,
       búsqueda de hiperparámetros, diagramas de caja de las 30 semillas).
 - [ ] Respuestas a las 3 preguntas de negocio.
-- [ ] Al menos un hallazgo de «Cacería de la alucinación» documentado.
+- [x] Al menos un hallazgo de «Cacería de la alucinación» documentado.
