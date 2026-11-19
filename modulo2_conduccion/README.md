@@ -8,9 +8,9 @@ Ver el enunciado completo en `docs/instrucciones_trabajo_3.pdf` (páginas 4–5)
 > Las imágenes originales van en `data/raw/` y **no** se suben a git (son pesadas).
 > En `data/processed/` dejen solo los archivos de partición y una muestra pequeña.
 
-## Puntos 1 a 4 del enunciado
+## Análisis y modelo de referencia
 
-El [análisis de los cuatro puntos](notebooks/analisis_puntos_1_a_4.md) reúne el caso de
+El [informe del módulo](notebooks/analisis_conduccion.md) reúne el caso de
 uso, el perfil del conjunto, la auditoría de la partición y los resultados de la
 regresión logística. Los experimentos posteriores deben reutilizar
 [`data/processed/particiones.csv`](data/processed/particiones.csv).

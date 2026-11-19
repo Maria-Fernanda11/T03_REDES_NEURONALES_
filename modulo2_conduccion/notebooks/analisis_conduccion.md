@@ -70,7 +70,7 @@ Sahin Afridi, Arafath Kafy, Nazmun Nessa Moon y Md. Shahriar Shakil, con licenci
 
 ### Cacería de la alucinación · código
 
-1. **Prompt literal:** «Listo, te voy a dar entonces las recomendaciones para el trabajo. Primero tenemos q tener en cuenta el readme que hay ahi. tengo que desarrollar el ejercicio del modulo 2, del punto 1 al 4».
+1. **Fragmento literal del prompt:** «Primero tenemos q tener en cuenta el readme que hay ahi».
 2. **Respuesta examinada:** la primera implementación de la IA aceptaba los pares visuales con la condición `left, right = np.where(minimum <= threshold)`. Construía los grupos con pHash y un umbral de Hamming de 10.
 3. **Sospecha:** con una cámara en posición similar, el interior del vehículo puede dominar el pHash aunque cambien el conductor o la actividad.
 4. **Evidencia:** la primera corrida reportó 642.710 pares candidatos, 439.646 de ellos con etiquetas distintas. Encadenar los pares creó un grupo con 6.624 de las 7.276 imágenes y dejó 429 en entrenamiento, 68 en validación y 6.779 en prueba. La partición resultó inutilizable para el diseño previsto.
