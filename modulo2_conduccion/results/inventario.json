@@ -146,5 +146,5 @@
   "relaxed_threshold": 20,
   "relaxed_correlation": 0.94,
   "cross_split_relaxed": 0,
-  "elapsed_seconds": 57.54
+  "elapsed_seconds": 179.54
 }
