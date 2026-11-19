@@ -191,9 +191,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--zip", type=Path, default=ROOT / "data/raw/dataset.zip")
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--threshold", type=int, default=18)
+    parser.add_argument("--threshold", type=int, default=20)
     parser.add_argument("--audit-threshold", type=int, default=20)
-    parser.add_argument("--min-correlation", type=float, default=0.950)
+    parser.add_argument("--min-correlation", type=float, default=0.940)
     parser.add_argument("--audit-correlation", type=float, default=0.940)
     args = parser.parse_args()
     if not 0 <= args.threshold <= args.audit_threshold <= 63:
@@ -212,9 +212,11 @@ def main():
         assignments = assign(rows, groups, args.seed)
         for row, group, assignment in zip(rows, groups, assignments):
             row.update(group=int(group), split=assignment)
-        # Segunda pasada independiente del grafo y con umbral relajado como sensibilidad.
-        relaxed = candidate_pairs(fingerprints, descriptors, args.audit_threshold, args.audit_correlation)
+        # Repetir la comparación tras asignar grupos sin usar las aristas ya construidas.
         audited = candidate_pairs(fingerprints, descriptors, args.threshold, args.min_correlation)
+        relaxed = audited
+        if (args.audit_threshold, args.audit_correlation) != (args.threshold, args.min_correlation):
+            relaxed = candidate_pairs(fingerprints, descriptors, args.audit_threshold, args.audit_correlation)
         cross_near = int(np.count_nonzero(assignments[audited[0]] != assignments[audited[1]]))
         cross_exact = int(np.count_nonzero(assignments[exact[0]] != assignments[exact[1]]))
         if cross_near or cross_exact:

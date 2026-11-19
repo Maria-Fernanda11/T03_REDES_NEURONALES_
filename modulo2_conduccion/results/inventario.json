@@ -81,29 +81,29 @@
   },
   "classes": {
     "safe_driving": {
-      "train": 1180,
-      "val": 166,
-      "test": 333
+      "train": 1175,
+      "val": 168,
+      "test": 336
     },
     "turning": {
-      "train": 937,
-      "val": 134,
-      "test": 268
+      "train": 944,
+      "val": 132,
+      "test": 263
     },
     "texting_phone": {
-      "train": 1092,
-      "val": 156,
-      "test": 313
+      "train": 1077,
+      "val": 152,
+      "test": 332
     },
     "talking_phone": {
-      "train": 1062,
-      "val": 150,
-      "test": 301
+      "train": 1064,
+      "val": 147,
+      "test": 302
     },
     "other_activities": {
       "train": 829,
-      "val": 118,
-      "test": 237
+      "val": 119,
+      "test": 236
     }
   },
   "luminance_quantiles_10_50_90": {
@@ -133,18 +133,18 @@
       118.96
     ]
   },
-  "groups": 1119,
-  "groups_with_multiple_images": 324,
-  "largest_group": 344,
+  "groups": 890,
+  "groups_with_multiple_images": 256,
+  "largest_group": 631,
   "exact_extra_files": 0,
-  "near_threshold": 18,
-  "min_correlation": 0.95,
-  "near_pairs": 73869,
-  "near_pairs_with_different_labels": 13592,
+  "near_threshold": 20,
+  "min_correlation": 0.94,
+  "near_pairs": 99449,
+  "near_pairs_with_different_labels": 28929,
   "cross_split_exact": 0,
   "cross_split_near": 0,
   "relaxed_threshold": 20,
   "relaxed_correlation": 0.94,
-  "cross_split_relaxed": 410,
-  "elapsed_seconds": 52.57
+  "cross_split_relaxed": 0,
+  "elapsed_seconds": 57.54
 }
