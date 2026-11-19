@@ -1,0 +1,9 @@
+seed: 42
+device: cpu
+threads: 2
+workers: 0
+batch_size: 16
+max_iter: 300
+limit_per_class_split: 8
+candidates_c: [0.1]
+repeat_seeds: [42]

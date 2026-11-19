@@ -46,9 +46,9 @@ def phash(gray):
     return int.from_bytes(bits.tobytes(), "big")
 
 
-def hashes(gray):
-    """Comparar vistas con espejo, giros y recortes centrales moderados."""
-    yield phash(gray)
+def views(gray):
+    """Vistas para verificar espejo, giros y recortes centrales moderados."""
+    yield gray
     for crop in [0, 6]:
         view = gray.crop((crop, crop, 64 - crop, 64 - crop))
         for flipped in [False, True]:
@@ -56,13 +56,21 @@ def hashes(gray):
             for angle in [-15, -7, 0, 7, 15]:
                 if crop == 0 and not flipped and angle == 0:
                     continue
-                rotated = oriented.rotate(angle, resample=Image.Resampling.BILINEAR,
-                                          fillcolor=int(np.asarray(oriented).mean()))
-                yield phash(rotated)
+                yield oriented.rotate(angle, resample=Image.Resampling.BILINEAR,
+                                      fillcolor=int(np.asarray(oriented).mean()))
+
+
+def descriptor(view):
+    pixels = np.asarray(view.resize((32, 32), Image.Resampling.LANCZOS), dtype=np.float32)
+    # El centro reduce la influencia de los bordes introducidos por la rotación.
+    pixels = pixels[3:-3:2, 3:-3:2].ravel()
+    pixels -= pixels.mean()
+    norm = np.linalg.norm(pixels)
+    return pixels / norm if norm else pixels
 
 
 def inspect(archive):
-    rows, fingerprints, unreadable = [], [], []
+    rows, fingerprints, descriptors, unreadable = [], [], [], []
     for path in sorted(archive.namelist()):
         if PurePosixPath(path).suffix.lower() not in {".jpg", ".jpeg", ".png", ".webp"}:
             continue
@@ -81,27 +89,32 @@ def inspect(archive):
         rows.append({"path": path, "class": label_for(path), "width": width, "height": height,
                      "luminance": round(float(luminance.mean()), 2), "contrast": round(float(luminance.std()), 2),
                      "sha256": hashlib.sha256(raw).hexdigest()})
-        fingerprints.append(list(hashes(gray)))
+        variants = list(views(gray))
+        fingerprints.append([phash(view) for view in variants])
+        descriptors.append([descriptor(view) for view in variants])
     if set(row["class"] for row in rows) != set(CLASSES):
         raise ValueError("El ZIP debe contener las cinco clases.")
-    return rows, np.asarray(fingerprints, dtype=np.uint64), unreadable
+    return rows, np.asarray(fingerprints, dtype=np.uint64), np.asarray(descriptors), unreadable
 
 
-def candidate_pairs(fingerprints, threshold):
-    """Comparación exhaustiva de cada variante con los hashes originales."""
+def candidate_pairs(fingerprints, descriptors, threshold, min_correlation):
+    """Buscar todas las vistas con pHash cercano y apariencia corroborada."""
     original = fingerprints[:, 0]
+    original_pixels = descriptors[:, 0]
     count = len(original)
     batches = []
     for start in range(0, count, 128):
         block = fingerprints[start:start + 128]
-        minimum = np.full((len(block), count), 64, dtype=np.uint8)
-        for variant in block.T:
+        for view, variant in enumerate(block.T):
             distance = np.bitwise_count(variant[:, None] ^ original[None, :])
-            np.minimum(minimum, distance, out=minimum)
-        left, right = np.where(minimum <= threshold)
-        keep = left + start != right
-        a, b = left[keep] + start, right[keep]
-        batches.append(np.minimum(a, b) * count + np.maximum(a, b))
+            left, right = np.where(distance <= threshold)
+            left += start
+            keep = left != right
+            left, right = left[keep], right[keep]
+            similarity = np.einsum("ij,ij->i", descriptors[left, view], original_pixels[right])
+            keep = similarity >= min_correlation
+            a, b = left[keep], right[keep]
+            batches.append(np.minimum(a, b) * count + np.maximum(a, b))
     encoded = np.unique(np.concatenate(batches))
     return encoded // count, encoded % count
 
@@ -133,7 +146,7 @@ def assign(rows, groups, seed):
 
 def write_csv(path, rows):
     with path.open("w", newline="", encoding="utf-8") as stream:
-        writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
+        writer = csv.DictWriter(stream, fieldnames=list(rows[0]), lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
 
@@ -178,16 +191,20 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--zip", type=Path, default=ROOT / "data/raw/dataset.zip")
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--threshold", type=int, default=10)
-    parser.add_argument("--audit-threshold", type=int, default=12)
+    parser.add_argument("--threshold", type=int, default=12)
+    parser.add_argument("--audit-threshold", type=int, default=14)
+    parser.add_argument("--min-correlation", type=float, default=0.975)
+    parser.add_argument("--audit-correlation", type=float, default=0.970)
     args = parser.parse_args()
     if not 0 <= args.threshold <= args.audit_threshold <= 63:
         parser.error("Se espera 0 ≤ threshold ≤ audit-threshold ≤ 63.")
+    if not 0 <= args.audit_correlation <= args.min_correlation <= 1:
+        parser.error("Se espera 0 ≤ audit-correlation ≤ min-correlation ≤ 1.")
     start = time.perf_counter()
     with ZipFile(args.zip) as archive:
-        rows, fingerprints, unreadable = inspect(archive)
+        rows, fingerprints, descriptors, unreadable = inspect(archive)
         print(f"Inventario: {len(rows)} imágenes", flush=True)
-        near = candidate_pairs(fingerprints, args.threshold)
+        near = candidate_pairs(fingerprints, descriptors, args.threshold, args.min_correlation)
         exact = exact_pairs(rows)
         edges = tuple(np.concatenate([a, b]) for a, b in zip(near, exact))
         graph = coo_matrix((np.ones(len(edges[0]), dtype=np.uint8), edges), shape=(len(rows), len(rows)))
@@ -196,11 +213,11 @@ def main():
         for row, group, assignment in zip(rows, groups, assignments):
             row.update(group=int(group), split=assignment)
         # Segunda pasada independiente del grafo y con umbral relajado como sensibilidad.
-        relaxed = candidate_pairs(fingerprints, args.audit_threshold)
-        audited = (relaxed if args.audit_threshold == args.threshold else
-                   candidate_pairs(fingerprints, args.threshold))
-        if np.any(assignments[audited[0]] != assignments[audited[1]]) or np.any(
-                assignments[exact[0]] != assignments[exact[1]]):
+        relaxed = candidate_pairs(fingerprints, descriptors, args.audit_threshold, args.audit_correlation)
+        audited = candidate_pairs(fingerprints, descriptors, args.threshold, args.min_correlation)
+        cross_near = int(np.count_nonzero(assignments[audited[0]] != assignments[audited[1]]))
+        cross_exact = int(np.count_nonzero(assignments[exact[0]] != assignments[exact[1]]))
+        if cross_near or cross_exact:
             raise RuntimeError("La auditoría encontró coincidencias entre particiones.")
         cross_relaxed = assignments[relaxed[0]] != assignments[relaxed[1]]
         processed = ROOT / "data/processed"
@@ -218,10 +235,12 @@ def main():
             for c in CLASSES},
         "groups": n_groups, "groups_with_multiple_images": sum(size > 1 for size in group_sizes.values()),
         "largest_group": max(group_sizes.values()), "exact_extra_files": len(exact[0]),
-        "near_threshold": args.threshold, "near_pairs": len(near[0]),
+        "near_threshold": args.threshold, "min_correlation": args.min_correlation,
+        "near_pairs": len(near[0]),
         "near_pairs_with_different_labels": sum(rows[a]["class"] != rows[b]["class"] for a, b in zip(*near)),
-        "cross_split_exact": 0, "cross_split_near": 0,
-        "relaxed_threshold": args.audit_threshold, "cross_split_relaxed": int(cross_relaxed.sum()),
+        "cross_split_exact": cross_exact, "cross_split_near": cross_near,
+        "relaxed_threshold": args.audit_threshold, "relaxed_correlation": args.audit_correlation,
+        "cross_split_relaxed": int(cross_relaxed.sum()),
         "elapsed_seconds": round(time.perf_counter() - start, 2),
     }
     (ROOT / "results/inventario.json").write_text(json.dumps(summary, indent=2) + "\n")
